@@ -9,7 +9,7 @@ project(ugv_drive)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   nav_msgs
-  geomery_msgs
+  geometry_msgs
   roscpp
   rospy
   std_msgs
