@@ -2,11 +2,13 @@
 import rospy
 import math
 from geometry_msgs.msg import Twist
+from dynamixel_workbench_msgs.srv import DynamixelCommand
 
 class UGVDriver:
     def __init__(self):
         rospy.init_node('ugv_drive')
         rospy.Subscriber('cmd_vel', Twist, self.twist_callback, queue_size=10)
+        self.turn_motor = rospy.ServiceProxy('dynamixel_workbench/dynamixel_command', DynamixelCommand)
         rospy.spin()
 
     def twist_callback(self, twist_callback_data):
@@ -18,6 +20,19 @@ class UGVDriver:
         rospy.loginfo("steer[rad]:{}".format(steer_angle))
         # rospy.loginfo(steer_speed)
         rospy.loginfo("speed[rad/s]:{}".format(wheel_speed))
+
+        result0 = self.turn_dynamixel(1, steer_angle[0]) 
+        result1 = self.turn_dynamixel(2, steer_angle[1]) 
+        result2 = self.turn_dynamixel(3, steer_angle[2]) 
+        result3 = self.turn_dynamixel(4, steer_angle[3]) 
+
+    def turn_dynamixel(self, motor_id, radian):
+        try:
+            value = self.radian2value(radian)
+            resp1 = self.turn_motor('', motor_id, 'Goal_Position', value)
+            return resp1.comm_result
+        except rospy.ServiceException, e:
+            print "Service call failed: %s"%e
 
     def calculate_joint_kinetics(self, twist_data):
         wheel_position = [{'x':0.6, 'y':0.4}, {'x':0.6, 'y':-0.4}, {'x':-0.6, 'y':-0.4}, {'x':-0.6, 'y':0.4}]
@@ -60,4 +75,7 @@ class UGVDriver:
         return steer_angle, steer_speed, wheel_speed
 
 if __name__ == "__main__":
-    ugv_driver = UGVDriver()
+    try:
+        ugv_driver = UGVDriver()
+    except:
+        pass

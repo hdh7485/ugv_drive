@@ -1,5 +1,6 @@
 <launch>
   <node pkg="ugv_drive" type="rc2twist.py" name="rc2twist" output="log"/>
   <node pkg="ugv_drive" type="ugv_drive.py" name="ugv_drive" output="screen"/>
-  <include file="$(find mavros)/launch/px4.launch"/>
+  <include file="$(find ugv_drive)/launch/include/px4.launch"/>
+  <include file="$(find ugv_drive)/launch/include/dynamixel_controllers.launch"/>
 </launch>
