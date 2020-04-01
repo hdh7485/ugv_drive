@@ -26,6 +26,10 @@ class UGVDriver:
         result2 = self.turn_dynamixel(3, steer_angle[2]) 
         result3 = self.turn_dynamixel(4, steer_angle[3]) 
 
+    def radian2value(self, radian):
+        value = -501923 / 180 * 180 / math.pi * radian
+        return value
+
     def turn_dynamixel(self, motor_id, radian):
         try:
             value = self.radian2value(radian)
