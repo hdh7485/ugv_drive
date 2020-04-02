@@ -15,7 +15,8 @@ class RC2Twist():
         return normalized_value
     
     def filter_deadzone(self, value, deadzone_range):
-        value = 0.0 if abs(value) < deadzone_range else value
+        filtered_value = 0.0 if abs(value) < abs(deadzone_range) else value
+        return filtered_value
 
     def rc_callback(self, rc_callback_data):
         rc_rssi = rc_callback_data.rssi
@@ -23,8 +24,8 @@ class RC2Twist():
         pub_twist_msg = Twist()
         
         for i in range(5):
-            norm_value[i] = self.normalize_rc(rc_callback_data.channels[i])
-            norm_value[i] = self.filter_deadzone(norm_value[i], 0.02)
+            norm_value[i] = self.filter_deadzone(self.normalize_rc(rc_callback_data.channels[i]), 0.05)
+            #norm_value[i] = self.filter_deadzone(norm_value[i], 0.02)
 
         norm_linear_vel_x = norm_value[1]
         norm_linear_vel_y = norm_value[0]
