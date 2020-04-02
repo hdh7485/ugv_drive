@@ -7,7 +7,7 @@ from dynamixel_workbench_msgs.srv import DynamixelCommand
 class UGVDriver:
     def __init__(self):
         rospy.init_node('ugv_drive')
-        rospy.Subscriber('cmd_vel', Twist, self.twist_callback, queue_size=10)
+        rospy.Subscriber('cmd_vel', Twist, self.twist_callback, queue_size=1)
         self.turn_motor = rospy.ServiceProxy('dynamixel_workbench/dynamixel_command', DynamixelCommand)
 
     def twist_callback(self, twist_callback_data):
@@ -57,7 +57,7 @@ class UGVDriver:
         y_vel = twist_data.linear.y
         angular_vel = twist_data.angular.z
 
-        if x_vel < 0.001 and y_vel < 0.001 and angular_vel < 0.001:
+        if abs(x_vel) < 0.001 and abs(y_vel) < 0.001 and abs(angular_vel) < 0.001:
             pass
         else:
             for i in range(4):
