@@ -13,6 +13,9 @@ class RC2Twist():
     def normalize_rc(self, value):
         normalized_value = (value - 1520.0)/400.0
         return normalized_value
+    
+    def filter_deadzone(self, value, deadzone_range):
+        value = 0.0 if abs(value) < deadzone_range else value
 
     def rc_callback(self, rc_callback_data):
         rc_rssi = rc_callback_data.rssi
@@ -21,9 +24,7 @@ class RC2Twist():
         
         for i in range(5):
             norm_value[i] = self.normalize_rc(rc_callback_data.channels[i])
-
-        rospy.loginfo(rc_callback_data)
-        rospy.loginfo(norm_value)
+            norm_value[i] = self.filter_deadzone(norm_value[i], 0.02)
 
         norm_linear_vel_x = norm_value[1]
         norm_linear_vel_y = norm_value[0]
@@ -31,6 +32,7 @@ class RC2Twist():
         norm_channel = norm_value[2]
         norm_e_stop = norm_value[4]
 
+        # Emergency Stop
         if norm_e_stop > 0.5:
             rospy.logwarn('EMERGENCY_STOP!')
             linear_vel_x = 0.0
@@ -48,19 +50,24 @@ class RC2Twist():
             linear_vel_x = max(min(linear_vel_x, max_linear_vel_x), -max_linear_vel_x)
             linear_vel_y = max(min(linear_vel_y, max_linear_vel_y), -max_linear_vel_y)
             angular_vel_z = max(min(angular_vel_z, max_angular_vel_z), -max_angular_vel_z)
-            
+        
         pub_twist_msg.linear.x = linear_vel_x
         pub_twist_msg.linear.y = linear_vel_y
         pub_twist_msg.angular.z = angular_vel_z
 
+        rospy.loginfo(rc_callback_data)
+        rospy.loginfo(norm_value)
         rospy.loginfo('twist_msg:\n{}'.format(pub_twist_msg))
         self.twist_pub.publish(pub_twist_msg)
     
     def run(self):
-        r = rospy.Rate(10)
+        r = rospy.Rate(100)
         while not rospy.is_shutdown():
             r.sleep()
 
 if __name__ == "__main__":
-    rc2in = RC2Twist()
-    rc2in.run() 
+    try:
+        rc2in = RC2Twist()
+        rc2in.run() 
+    except:
+        pass
