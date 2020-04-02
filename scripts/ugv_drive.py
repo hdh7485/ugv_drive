@@ -26,6 +26,12 @@ class UGVDriver:
         value = -501923 / 180 * 180 / math.pi * radian
         return value
 
+    def normalize(self, radian):
+        new_radian = radian
+        while (new_radian <= -math.pi): new_radian += math.pi*2
+        while (new_radian > math.pi): new_radian -= math.pi*2
+        return newAngle
+
     def turn_dynamixel(self, motor_id, radian):
         try:
             value = self.radian2value(radian)
