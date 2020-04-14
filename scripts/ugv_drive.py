@@ -17,9 +17,9 @@ class UGVDriver:
         # rospy.loginfo(steer_speed)
         rospy.loginfo("speed[rad/s]:{}".format(wheel_speed))
 
-        result0 = self.turn_dynamixel(1, steer_angle[0]) 
+        result0 = self.turn_dynamixel(1, steer_angle[2]) 
         result1 = self.turn_dynamixel(2, steer_angle[1]) 
-        result2 = self.turn_dynamixel(3, steer_angle[2]) 
+        result2 = self.turn_dynamixel(3, steer_angle[0]) 
         result3 = self.turn_dynamixel(4, steer_angle[3]) 
 
     def radian2value(self, radian):
