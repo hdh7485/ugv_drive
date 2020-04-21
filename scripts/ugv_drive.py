@@ -3,12 +3,99 @@ import rospy
 import math
 from geometry_msgs.msg import Twist
 from dynamixel_workbench_msgs.srv import DynamixelCommand
+import odrive
+from odrive.enums import *
+
+class ODriveController:
+    def __init__(self, serial_number=None):
+        if serial_number == None:
+            self.odrive = odrive.find_any()
+        else:
+            self.odrive = odrive.find_any(serial_number=serial_number)
+        self.axis0 = self.odrive.axis0
+        self.axis1 = self.odrive.axis1
+
+        #self.axis0_init_params()
+        #self.axis1_init_params()
+
+        #self.state_motor_calibration(self.axis0)
+        #self.state_encoder_offset_calibration(self.axis0)
+
+        #self.state_motor_calibration(self.axis1)
+        #self.state_encoder_offset_calibration(self.axis1)
+
+        self.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis1.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+    
+    def axis0_init_params(self):
+        self.axis0.motor.config.pole_pairs = 15
+        self.axis0.motor.config.resistance_calib_max_voltage = 4
+        self.axis0.motor.config.requested_current_range = 25 #Requires config save and reboot
+        self.axis0.motor.config.current_control_bandwidth = 100
+        self.axis0.encoder.config.mode = ENCODER_MODE_HALL
+        self.axis0.encoder.config.cpr = 90
+        self.axis0.encoder.config.bandwidth = 100
+        self.axis0.controller.config.pos_gain = 1
+        self.axis0.controller.config.vel_gain = 0.02
+        self.axis0.controller.config.vel_integrator_gain = 0.1
+        self.axis0.controller.config.vel_limit = 1000
+        self.axis0.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
+        self.odrive.save_configuration()
+
+    def axis1_init_params(self):
+        self.axis1.motor.config.pole_pairs = 15
+        self.axis1.motor.config.resistance_calib_max_voltage = 4
+        self.axis1.motor.config.requested_current_range = 25 #Requires config save and reboot
+        self.axis1.motor.config.current_control_bandwidth = 100
+        self.axis1.encoder.config.mode = ENCODER_MODE_HALL
+        self.axis1.encoder.config.cpr = 90
+        self.axis1.encoder.config.bandwidth = 100
+        self.axis1.controller.config.pos_gain = 1
+        self.axis1.controller.config.vel_gain = 0.02
+        self.axis1.controller.config.vel_integrator_gain = 0.1
+        self.axis1.controller.config.vel_limit = 1000
+        self.axis1.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
+        self.odrive.save_configuration()
+
+    def state_motor_calibration(self, axis):
+        axis.requested_state = AXIS_STATE_MOTOR_CALIBRATION
+        rospy.loginfo(axis.motor)
+        if axis.motor.error == 0:
+            axis.motor.config.pre_calibrated = True
+        else:
+            rospy.logerr("{} state motor calibration failed".format(axis))
+
+    def state_encoder_offset_calibration(self, axis):
+        axis.requested_state = AXIS_STATE_ENCODER_OFFSET_CALIBRATION
+        rospy.loginfo(axis.encoder)
+        if axis.encoder.error == 0:
+            axis.encoder.config.pre_calibrated = True
+        else:
+            rospy.logerr("{} state encoder offset calibration failed".format(axis))
+
+    def rotate_rpm_axis0(self, rad_per_sec):
+        count_per_sec = rad_per_sec * 2 * math.pi / 60 * 15
+        self.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis0.controller.vel_setpoint = count_per_sec
+    
+    def rotate_rpm_axis1(self, rad_per_sec):
+        count_per_sec = rad_per_sec * 2 * math.pi / 60 * 15
+        self.axis1.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis1.controller.vel_setpoint = count_per_sec
+
+    def request_idle_state_axis0(self):
+        self.axis0.requested_state = AXIS_STATE_IDLE
+        
+    def request_idle_state_axis1(self):
+        self.axis1.requested_state = AXIS_STATE_IDLE
 
 class UGVDriver:
     def __init__(self):
         rospy.init_node('ugv_drive')
         rospy.Subscriber('cmd_vel', Twist, self.twist_callback, queue_size=1)
         self.turn_motor = rospy.ServiceProxy('dynamixel_workbench/dynamixel_command', DynamixelCommand)
+        front_odrive = ODriveController(12341234)
+        back_odrive = ODriveController(43214321)
 
     def twist_callback(self, twist_callback_data):
         # rospy.loginfo(twist_callback_data)
@@ -21,6 +108,10 @@ class UGVDriver:
         result1 = self.turn_dynamixel(2, steer_angle[1]) 
         result2 = self.turn_dynamixel(3, steer_angle[0]) 
         result3 = self.turn_dynamixel(4, steer_angle[3]) 
+        front_odrive.rotate_rpm_axis0(wheel_speed[0])
+        front_odrive.rotate_rpm_axis1(wheel_speed[1])
+        rear_odrive.rotate_rpm_axis0(wheel_speed[2])
+        rear_odrive.rotate_rpm_axis1(wheel_speed[3])
 
     def radian2value(self, radian):
         value = -501923 / 180 * 180 / math.pi * radian
