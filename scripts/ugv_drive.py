@@ -5,13 +5,18 @@ from geometry_msgs.msg import Twist
 from dynamixel_workbench_msgs.srv import DynamixelCommand
 import odrive
 from odrive.enums import *
+import time
 
 class ODriveController:
-    def __init__(self, serial_number=None):
+    def __init__(self, timeout=30, serial_number=None):
         if serial_number == None:
-            self.odrive = odrive.find_any()
+            rospy.loginfo("Finding Odrive")
+            self.odrive = odrive.find_any(timeout=timeout)
+            rospy.loginfo("Odrive connected")
         else:
-            self.odrive = odrive.find_any(serial_number=serial_number)
+            rospy.loginfo("Finding {}".format(serial_number))
+            self.odrive = odrive.find_any(timeout=timeout, serial_number=serial_number)
+            rospy.loginfo("{} Odrive connected".format(serial_number))
         self.axis0 = self.odrive.axis0
         self.axis1 = self.odrive.axis1
 
@@ -62,6 +67,7 @@ class ODriveController:
         rospy.loginfo(axis.motor)
         if axis.motor.error == 0:
             axis.motor.config.pre_calibrated = True
+            self.odrive.save_configuration()
         else:
             rospy.logerr("{} state motor calibration failed".format(axis))
 
@@ -70,6 +76,7 @@ class ODriveController:
         rospy.loginfo(axis.encoder)
         if axis.encoder.error == 0:
             axis.encoder.config.pre_calibrated = True
+            self.odrive.save_configuration()
         else:
             rospy.logerr("{} state encoder offset calibration failed".format(axis))
 
@@ -92,10 +99,12 @@ class ODriveController:
 class UGVDriver:
     def __init__(self):
         rospy.init_node('ugv_drive')
+        time.sleep(2)
+        self.front_odrive = ODriveController(timeout=30, serial_number="20803592524B")
+        time.sleep(2)
+        self.back_odrive  = ODriveController(timeout=30, serial_number="20583592524B")
         rospy.Subscriber('cmd_vel', Twist, self.twist_callback, queue_size=1)
         self.turn_motor = rospy.ServiceProxy('dynamixel_workbench/dynamixel_command', DynamixelCommand)
-        front_odrive = ODriveController(12341234)
-        back_odrive = ODriveController(43214321)
 
     def twist_callback(self, twist_callback_data):
         # rospy.loginfo(twist_callback_data)
@@ -108,10 +117,10 @@ class UGVDriver:
         result1 = self.turn_dynamixel(2, steer_angle[1]) 
         result2 = self.turn_dynamixel(3, steer_angle[0]) 
         result3 = self.turn_dynamixel(4, steer_angle[3]) 
-        front_odrive.rotate_rpm_axis0(wheel_speed[0])
-        front_odrive.rotate_rpm_axis1(wheel_speed[1])
-        rear_odrive.rotate_rpm_axis0(wheel_speed[2])
-        rear_odrive.rotate_rpm_axis1(wheel_speed[3])
+        self.front_odrive.rotate_rpm_axis0(wheel_speed[3])
+        self.front_odrive.rotate_rpm_axis1(wheel_speed[2])
+        self.back_odrive.rotate_rpm_axis0(wheel_speed[1])
+        self.back_odrive.rotate_rpm_axis1(wheel_speed[0])
 
     def radian2value(self, radian):
         value = -501923 / 180 * 180 / math.pi * radian
