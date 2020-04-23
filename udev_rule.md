@@ -1,6 +1,10 @@
 1. Rule file path: `/etc/udev/rules.d`
 2. Check udev info `$(udevadm info -q path -n /dev/ttyUSB1)`
-3. Make a new rule: `80-px4.rules`
-4. Rule: 
-ACTIO=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="26ac", ATTRS{idProduct}=="0012", SYMLINK+="ttyPX4"
+3. Check udev info `lsusb`
+4. Make a new rule: `80-ugv.rules`
+5. Rule: 
+px4
+`ACTION=="add", SUBSYSTEM=="tty", SUBSYSTEMS=="usb", ATTRS{idVendor}=="26ac", ATTRS{idProduct}=="0012", MODE="0666", SYMLINK+="ttyPX4"`
+U2D2(dynamixel driver)
+`ACTION=="add", SUBSYSTEM=="tty", SUBSYSTEMS=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", MODE="0666", SYMLINK+="ttyDynamixel"`
 
