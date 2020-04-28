@@ -110,27 +110,6 @@ class UGVDriver:
     def twist_callback(self, twist_callback_data):
         # rospy.loginfo(twist_callback_data)
         steer_angle, steer_speed, wheel_speed = self.calculate_joint_kinetics(twist_callback_data)
-        # rospy.loginfo("steer[rad]:{}".format(steer_angle[2]))
-        # rospy.loginfo("current_steer[rad]:{}".format(self.current_steer_radian[0]))
-        # rospy.loginfo(steer_speed)
-        # rospy.loginfo("speed[rad/s]:{}".format(wheel_speed))
-
-        #if abs(steer_angle[2] - self.current_steer_radian[0]) > math.pi/2:
-        #    steer_angle[2] += math.pi
-        #    steer_angle[2] = self.normalize_2pi(steer_angle[2])
-        #    wheel_speed[3] *= -1
-        #if abs(steer_angle[1] - self.current_steer_radian[1]) > math.pi/2:
-        #    steer_angle[1] += math.pi
-        #    steer_angle[1] = self.normalize_2pi(steer_angle[1])
-        #    wheel_speed[2] *= -1
-        #if abs(steer_angle[0] - self.current_steer_radian[2]) > math.pi/2:
-        #    steer_angle[0] += math.pi
-        #    steer_angle[0] = self.normalize_2pi(steer_angle[0])
-        #    wheel_speed[1] *= -1
-        #if abs(steer_angle[3] - self.current_steer_radian[3]) > math.pi/2:
-        #    steer_angle[3] += math.pi
-        #    steer_angle[3] = self.normalize_2pi(steer_angle[3])
-        #    wheel_speed[0] *= -1
         result0 = self.turn_dynamixel(1, steer_angle[2]) 
         result1 = self.turn_dynamixel(2, steer_angle[1]) 
         result2 = self.turn_dynamixel(3, steer_angle[0]) 
@@ -217,20 +196,29 @@ class UGVDriver:
 
         if abs(steer_angle[2] - self.current_steer_radian[0]) > math.pi/2+0.02:
             steer_angle[2] += math.pi
-            steer_angle[2] = self.normalize_2pi(steer_angle[2])
-            wheel_speed[3] *= -1
+            normalized_value = self.normalize_2pi(steer_angle[2])
+            if normalized_value > -math.pi and  normalized_value < math.pi:
+                steer_angle[2] = normalized_value
+                wheel_speed[3] *= -1
         if abs(steer_angle[1] - self.current_steer_radian[1]) > math.pi/2+0.02:
             steer_angle[1] += math.pi
-            steer_angle[1] = self.normalize_2pi(steer_angle[1])
-            wheel_speed[2] *= -1
+            normalized_value = self.normalize_2pi(steer_angle[3])
+            if normalized_value > -math.pi and  normalized_value < math.pi:
+                steer_angle[1] = normalized_value
+                wheel_speed[2] *= -1
         if abs(steer_angle[0] - self.current_steer_radian[2]) > math.pi/2+0.02:
             steer_angle[0] += math.pi
-            steer_angle[0] = self.normalize_2pi(steer_angle[0])
-            wheel_speed[1] *= -1
+            normalized_value = self.normalize_2pi(steer_angle[0])
+            if normalized_value > -math.pi and  normalized_value < math.pi:
+                steer_angle[0] = normalized_value
+                wheel_speed[1] *= -1
         if abs(steer_angle[3] - self.current_steer_radian[3]) > math.pi/2+0.02:
             steer_angle[3] += math.pi
-            steer_angle[3] = self.normalize_2pi(steer_angle[3])
-            wheel_speed[0] *= -1
+            normalized_value = self.normalize_2pi(steer_angle[3])
+            if normalized_value > -math.pi and  normalized_value < math.pi:
+                steer_angle[3] = normalized_value
+                wheel_speed[0] *= -1
+
         return steer_angle, steer_speed, wheel_speed
 
     def run(self):
