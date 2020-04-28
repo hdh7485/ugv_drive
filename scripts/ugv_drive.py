@@ -99,9 +99,7 @@ class ODriveController:
 class UGVDriver:
     def __init__(self):
         rospy.init_node('ugv_drive')
-        time.sleep(2)
         self.front_odrive = ODriveController(timeout=30, serial_number="20803592524B")
-        time.sleep(2)
         self.back_odrive  = ODriveController(timeout=30, serial_number="20583592524B")
         rospy.Subscriber('cmd_vel', Twist, self.twist_callback, queue_size=1)
         self.turn_motor = rospy.ServiceProxy('dynamixel_workbench/dynamixel_command', DynamixelCommand)
@@ -123,7 +121,7 @@ class UGVDriver:
         self.back_odrive.rotate_rpm_axis1(wheel_speed[0])
 
     def radian2value(self, radian):
-        value = -501923 / 180 * 180 / math.pi * radian
+        value = -501923.0 / math.pi * radian
         return value
 
     def normalize(self, radian):

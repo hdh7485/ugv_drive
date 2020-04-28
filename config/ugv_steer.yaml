@@ -4,16 +4,16 @@
 steer1:
   ID: 1
   Return_Delay_Time: 0
-  Operating_Mode: 3
+  Operating_Mode: 4
 steer2:
   ID: 2
   Return_Delay_Time: 0
-  Operating_Mode: 3
+  Operating_Mode: 4
 steer3:
   ID: 3
   Return_Delay_Time: 0
-  Operating_Mode: 3
+  Operating_Mode: 4
 steer4:
   ID: 4
   Return_Delay_Time: 0
-  Operating_Mode: 3
+  Operating_Mode: 4
