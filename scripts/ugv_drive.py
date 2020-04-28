@@ -215,19 +215,19 @@ class UGVDriver:
             wheel_speed = target_speed_1
             steer_angle = target_steer_1
 
-        if abs(steer_angle[2] - self.current_steer_radian[0]) > math.pi/2:
+        if abs(steer_angle[2] - self.current_steer_radian[0]) > math.pi/2+0.02:
             steer_angle[2] += math.pi
             steer_angle[2] = self.normalize_2pi(steer_angle[2])
             wheel_speed[3] *= -1
-        if abs(steer_angle[1] - self.current_steer_radian[1]) > math.pi/2:
+        if abs(steer_angle[1] - self.current_steer_radian[1]) > math.pi/2+0.02:
             steer_angle[1] += math.pi
             steer_angle[1] = self.normalize_2pi(steer_angle[1])
             wheel_speed[2] *= -1
-        if abs(steer_angle[0] - self.current_steer_radian[2]) > math.pi/2:
+        if abs(steer_angle[0] - self.current_steer_radian[2]) > math.pi/2+0.02:
             steer_angle[0] += math.pi
             steer_angle[0] = self.normalize_2pi(steer_angle[0])
             wheel_speed[1] *= -1
-        if abs(steer_angle[3] - self.current_steer_radian[3]) > math.pi/2:
+        if abs(steer_angle[3] - self.current_steer_radian[3]) > math.pi/2+0.02:
             steer_angle[3] += math.pi
             steer_angle[3] = self.normalize_2pi(steer_angle[3])
             wheel_speed[0] *= -1
