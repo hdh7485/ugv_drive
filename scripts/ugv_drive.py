@@ -110,18 +110,24 @@ class UGVDriver:
     def twist_callback(self, twist_callback_data):
         # rospy.loginfo(twist_callback_data)
         steer_angle, steer_speed, wheel_speed = self.calculate_joint_kinetics(twist_callback_data)
-        result0 = self.turn_dynamixel(1, steer_angle[2]) 
-        result1 = self.turn_dynamixel(2, steer_angle[1]) 
-        result2 = self.turn_dynamixel(3, steer_angle[0]) 
-        result3 = self.turn_dynamixel(4, steer_angle[3]) 
-        self.front_odrive.rotate_rpm_axis0(wheel_speed[3])
-        self.front_odrive.rotate_rpm_axis1(wheel_speed[2])
-        self.back_odrive.rotate_rpm_axis0(wheel_speed[1])
-        self.back_odrive.rotate_rpm_axis1(wheel_speed[0])
+        result0 = self.turn_dynamixel(1, steer_angle[2]) # FL
+        result1 = self.turn_dynamixel(2, steer_angle[1]) # BL
+        result2 = self.turn_dynamixel(3, steer_angle[0]) # BR
+        result3 = self.turn_dynamixel(4, steer_angle[3]) # FR
+        self.front_odrive.rotate_rpm_axis1(wheel_speed[2]) # FL
+        self.back_odrive.rotate_rpm_axis0(wheel_speed[1]) # BL
+        self.back_odrive.rotate_rpm_axis1(wheel_speed[0]) # BR
+        self.front_odrive.rotate_rpm_axis0(wheel_speed[3]) # FR
 
     def normalize_2pi(self, radian):
         normalized_radian = (radian + 2 * math.pi) % (2 * math.pi)
         return normalized_radian
+
+    def normalize_pi(self, radian):
+        new_radian = radian
+        while (new_radian <= -math.pi): new_radian += math.pi*2
+        while (new_radian > math.pi): new_radian -= math.pi*2
+        return new_radian
 
     def dynamixel_callback(self, dynamixel_data):
         for motor in dynamixel_data.dynamixel_state:
@@ -134,7 +140,8 @@ class UGVDriver:
         return radian
 
     def radian2value(self, radian):
-        value = -501923.0 / math.pi * radian
+        value = int(-501923.0 / math.pi * radian)
+        if value == -501923: value = 0
         return value
 
     def normalize(self, radian):
@@ -193,31 +200,33 @@ class UGVDriver:
                 target_speed_2[i] = -target_speed_1[i]
             wheel_speed = target_speed_1
             steer_angle = target_steer_1
-
+        rospy.loginfo(abs(steer_angle[2] - self.current_steer_radian[0]))
         if abs(steer_angle[2] - self.current_steer_radian[0]) > math.pi/2+0.02:
             steer_angle[2] += math.pi
-            normalized_value = self.normalize_2pi(steer_angle[2])
+            normalized_value = self.normalize_pi(steer_angle[2])
             if normalized_value > -math.pi and  normalized_value < math.pi:
                 steer_angle[2] = normalized_value
-                wheel_speed[3] *= -1
+                wheel_speed[2] *= -1
         if abs(steer_angle[1] - self.current_steer_radian[1]) > math.pi/2+0.02:
-            steer_angle[1] += math.pi
-            normalized_value = self.normalize_2pi(steer_angle[3])
+            inverse_value = steer_angle[1] + math.pi
+            normalized_value = self.normalize_pi(inverse_value)
             if normalized_value > -math.pi and  normalized_value < math.pi:
                 steer_angle[1] = normalized_value
-                wheel_speed[2] *= -1
+                wheel_speed[1] *= -1
         if abs(steer_angle[0] - self.current_steer_radian[2]) > math.pi/2+0.02:
             steer_angle[0] += math.pi
-            normalized_value = self.normalize_2pi(steer_angle[0])
+            normalized_value = self.normalize_pi(steer_angle[0])
             if normalized_value > -math.pi and  normalized_value < math.pi:
                 steer_angle[0] = normalized_value
-                wheel_speed[1] *= -1
+                wheel_speed[0] *= -1
         if abs(steer_angle[3] - self.current_steer_radian[3]) > math.pi/2+0.02:
             steer_angle[3] += math.pi
-            normalized_value = self.normalize_2pi(steer_angle[3])
+            normalized_value = self.normalize_pi(steer_angle[3])
             if normalized_value > -math.pi and  normalized_value < math.pi:
                 steer_angle[3] = normalized_value
-                wheel_speed[0] *= -1
+                wheel_speed[3] *= -1
+        rospy.loginfo(wheel_speed)
+        rospy.loginfo(target_speed_1)
 
         return steer_angle, steer_speed, wheel_speed
 
