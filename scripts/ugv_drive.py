@@ -130,7 +130,83 @@ class UGVDriver:
                          DynamixelStateList, self.dynamixel_callback, queue_size=1)
         self.odom_publisher = rospy.Publisher('/ugv_odom', Odometry, queue_size=1)
         self.turn_motor = rospy.ServiceProxy('/dynamixel_workbench/dynamixel_command', DynamixelCommand)
-        rospy.Timer(rospy.Duration(self.odom_timer), self.odom_calculator)
+        #rospy.Timer(rospy.Duration(self.odom_timer), self.odom_calculator)
+        rospy.Timer(rospy.Duration(self.odom_timer), self.calc_forward_kinematic)
+
+    def calc_forward_kinematic(self, event=None):
+        wheel_speed_1 = self.front_odrive.vel_estimate_axis1() * math.pi*2/self.cpr #FL rad/s
+        wheel_speed_2 = self.front_odrive.vel_estimate_axis0() * math.pi*2/self.cpr #FR
+        wheel_speed_3 = self.back_odrive.vel_estimate_axis0() * math.pi*2/self.cpr #BL
+        wheel_speed_4 = self.back_odrive.vel_estimate_axis1() * math.pi*2/self.cpr #BR
+
+        FL_steer = self.current_steer_radian[0]
+        FR_steer = self.current_steer_radian[3]
+        BL_steer = self.current_steer_radian[1]
+        BR_steer = self.current_steer_radian[2]
+
+        FL_speed = wheel_speed_1 * self.radius
+        FR_speed = wheel_speed_2 * self.radius
+        BL_speed = wheel_speed_3 * self.radius
+        BR_speed = wheel_speed_4 * self.radius
+        # declare auxilliary variables
+        local_speed_x = 0.0	# Robot-Velocity in x-Direction (longitudinal) in m/s (in Robot-Coordinateframe)
+        local_speed_y = 0.0	# Robot-Velocity in y-Direction (lateral) in m/s (in Robot-Coordinateframe)
+        yaw_rate = 0.0 # Robot-Rotation-Rate in rad/s (in Robot-Coordinateframe)
+        dtempDiffXM = 0.0	# Difference in X-Coordinate of two wheels in m
+        dtempDiffYM = 0.0	# Difference in Y-Coordinate of two wheels in m
+        dtempRelPhiWheelsRAD = 0.0 ## Angle between axis of two wheels w.r.t the X-Axis of the Robot-Coordinate-System in rad
+        wheel_distance = 0.0 ## distance of two wheels in m
+        dtempRelPhiWheel1RAD = 0.0 ## Steering Angle of (im math. pos. direction) first Wheel w.r.t. the linking axis of the two wheels
+        dtempRelPhiWheel2RAD = 0.0 ## Steering Angle of (im math. pos. direction) first Wheel w.r.t. the linking axis of the two wheels
+        #wheel list order: [FL, BL, BR, FR]
+        wheel_velocity = [FL_speed, BL_speed, BR_speed, FR_speed] ## Wheel-Velocities (all Wheels) in m/s
+        steer_angle = [FL_steer, BL_steer, BR_steer, FR_steer]
+
+        #position of each wheel from center point
+        wheel_position_x = [0.6, -0.6, -0.6, 0.6]
+        wheel_position_y = [0.4, 0.4, -0.4, -0.4]
+        # initial values
+        local_speed_x = 0 		## Robot-Velocity in x-Direction (longitudinal) in m/s (in Robot-Coordinateframe)
+        local_speed_y = 0 		## Robot-Velocity in y-Direction (lateral) in m/s (in Robot-Coordinateframe)
+        yaw_rate = 0 
+
+        # calculate rotational rate of robot and current "virtual" axis between all wheels
+        for i in range(3):
+            # calc Parameters (Dist,Phi) of virtual linking axis of the two considered wheels
+            dtempDiffXM = wheel_position_x[i+1] - wheel_position_x[i] 
+            dtempDiffYM = wheel_position_y[i+1] - wheel_position_y[i] 
+            wheel_distance = math.sqrt(dtempDiffXM*dtempDiffXM + dtempDiffYM*dtempDiffYM) 
+            dtempRelPhiWheelsRAD = math.atan2(dtempDiffYM, dtempDiffXM) 
+            
+            # transform velocity of wheels into relative coordinate frame of linking axes -> subtract angles
+            dtempRelPhiWheel1RAD = steer_angle[i] - dtempRelPhiWheelsRAD 
+            dtempRelPhiWheel2RAD = steer_angle[i+1] - dtempRelPhiWheelsRAD 
+            
+            yaw_rate += (wheel_velocity[i+1] * math.sin(dtempRelPhiWheel2RAD) 
+                  - wheel_velocity[i] * math.sin(dtempRelPhiWheel1RAD))/wheel_distance 
+        
+        # calculate last missing axis (between last wheel and 1.)
+        # calc. Parameters (Dist,Phi) of virtual linking axis of the two considered wheels
+        dtempDiffXM = wheel_position_x[0] - wheel_position_x[3] 
+        dtempDiffYM = wheel_position_y[0] - wheel_position_y[3] 
+        wheel_distance = math.sqrt(dtempDiffXM*dtempDiffXM + dtempDiffYM*dtempDiffYM) 
+        dtempRelPhiWheelsRAD = math.atan2(dtempDiffYM, dtempDiffXM) 
+        
+            # transform velocity of wheels into relative coordinate frame of linking axes -> subtract angles
+        dtempRelPhiWheel1RAD = steer_angle[3] - dtempRelPhiWheelsRAD 
+        dtempRelPhiWheel2RAD = steer_angle[0] - dtempRelPhiWheelsRAD 
+        
+        # close calculation of robots rotational velocity
+        yaw_rate += (wheel_velocity[0]*math.sin(dtempRelPhiWheel2RAD) - wheel_velocity[3]*math.sin(dtempRelPhiWheel1RAD))/wheel_distance 
+        yaw_rate = yaw_rate/4 
+        # calculate linear velocity of robot
+        for i in range(4):
+            local_speed_x += wheel_velocity[i]*math.cos(steer_angle[i]) 
+            local_speed_y += wheel_velocity[i]*math.sin(steer_angle[i]) 
+        local_speed_x = local_speed_x/4 
+        local_speed_y = local_speed_y/4 
+
+        rospy.loginfo("speed_x:{:4.3} speed_y:{:4.3} yaw_rate:{:4.3}".format(local_speed_x, local_speed_y, yaw_rate))
 
     def odom_calculator(self, event=None):
         wheel_speed_1 = self.front_odrive.vel_estimate_axis1() * math.pi*2/self.cpr #FL rad/s
@@ -172,7 +248,8 @@ class UGVDriver:
 
         Lx = 1.2
         Ly = 0.8
-        beta = (FL_steer + FR_steer - BL_steer - BR_steer) / 4
+        #beta = (FL_steer + FR_steer - BL_steer - BR_steer) / 4
+        beta = (FL_steer + FR_steer + BL_steer + BR_steer) / 4
         #rospy.loginfo("beta:{}".format(beta))
         yaw_rate = (2/Ly)*V*math.sin(beta)# + (2/Lx)*V*math.cos(beta)
         self.yaw = self.yaw + yaw_rate * self.dt
