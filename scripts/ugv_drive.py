@@ -112,7 +112,7 @@ class ODriveController:
 
 class UGVDriver:
     def __init__(self):
-        self.odom_timer = 0.1
+        self.odom_timer = 0.01
         self.radius = 0.127 #m
         self.dt = self.odom_timer
         self.cpr = 90
@@ -121,6 +121,8 @@ class UGVDriver:
         self.y = 0
         self.current_steer_radian = [0, 0, 0, 0]  #radian
         self.current_wheel_speed = [0, 0, 0, 0]   #radian/sec
+        self.last_local_speed_x = 0.0
+        self.last_local_speed_y = 0.0
 
         rospy.init_node('ugv_drive')
         self.front_odrive = ODriveController(timeout=30, serial_number="20803592524B")
@@ -163,8 +165,9 @@ class UGVDriver:
         steer_angle = [FL_steer, BL_steer, BR_steer, FR_steer]
 
         #position of each wheel from center point
-        wheel_position_x = [0.6, -0.6, -0.6, 0.6]
-        wheel_position_y = [0.4, 0.4, -0.4, -0.4]
+        # 107, 65
+        wheel_position_x = [0.535, -0.535, -0.535, 0.535]
+        wheel_position_y = [0.325, 0.325, -0.325, -0.325]
         # initial values
         local_speed_x = 0 		## Robot-Velocity in x-Direction (longitudinal) in m/s (in Robot-Coordinateframe)
         local_speed_y = 0 		## Robot-Velocity in y-Direction (lateral) in m/s (in Robot-Coordinateframe)
@@ -207,64 +210,20 @@ class UGVDriver:
         local_speed_y = local_speed_y/4 
 
         rospy.loginfo("speed_x:{:4.3} speed_y:{:4.3} yaw_rate:{:4.3}".format(local_speed_x, local_speed_y, yaw_rate))
+        self.calculate_odom(local_speed_x, local_speed_y, yaw_rate)
 
-    def odom_calculator(self, event=None):
-        wheel_speed_1 = self.front_odrive.vel_estimate_axis1() * math.pi*2/self.cpr #FL rad/s
-        wheel_speed_2 = self.front_odrive.vel_estimate_axis0() * math.pi*2/self.cpr #FR
-        wheel_speed_3 = self.back_odrive.vel_estimate_axis0() * math.pi*2/self.cpr #BL
-        wheel_speed_4 = self.back_odrive.vel_estimate_axis1() * math.pi*2/self.cpr #BR
-
-        FL_steer = self.current_steer_radian[0]
-        FR_steer = self.current_steer_radian[3]
-        BL_steer = self.current_steer_radian[1]
-        BR_steer = self.current_steer_radian[2]
-
-        FL_speed = wheel_speed_1 * self.radius
-        FR_speed = wheel_speed_2 * self.radius
-        BL_speed = wheel_speed_3 * self.radius
-        BR_speed = wheel_speed_4 * self.radius
-
-        FL_speed_x = wheel_speed_1 * math.cos(FL_steer)
-        FL_speed_y = wheel_speed_1 * math.sin(FL_steer)
-        FR_speed_x = wheel_speed_2 * math.cos(FR_steer)
-        FR_speed_y = wheel_speed_2 * math.sin(FR_steer)
-        BL_speed_x = wheel_speed_3 * math.cos(BL_steer)
-        BL_speed_y = wheel_speed_3 * math.sin(BL_steer)
-        BR_speed_x = wheel_speed_4 * math.cos(BR_steer)
-        BR_speed_y = wheel_speed_4 * math.sin(BR_steer)
-
-        #rospy.loginfo("steer:{:4.2f} {:4.2f} {:4.2f} {:4.2f} 
-        #        speed:{:4.2f} {:4.2f} {:4.2f} {:4.2f}".format(
-        #        FL_steer, FR_steer, BL_steer, BR_steer, 
-        #        FL_speed_y, FR_speed_y, BL_speed_y, BR_speed_y))
-
-        x_mean = (FL_speed_x + FR_speed_x + BL_speed_x + BR_speed_x)/4
-        y_mean = (FL_speed_y + FR_speed_y + BL_speed_y + BR_speed_y)/4
-        #rospy.loginfo("x_maen:{:4.3f}, y_mean:{:4.3f}".format(x_mean, y_mean))
-
-        #V = (FL_speed + FR_speed - BL_speed - BR_speed) / 4
-        V = math.sqrt(x_mean**2 + y_mean**2)
-        #rospy.loginfo("V:{:4.3}".format(V))
-
-        Lx = 1.2
-        Ly = 0.8
-        #beta = (FL_steer + FR_steer - BL_steer - BR_steer) / 4
-        beta = (FL_steer + FR_steer + BL_steer + BR_steer) / 4
-        #rospy.loginfo("beta:{}".format(beta))
-        yaw_rate = (2/Ly)*V*math.sin(beta)# + (2/Lx)*V*math.cos(beta)
-        self.yaw = self.yaw + yaw_rate * self.dt
-        Vx = V*math.cos(self.yaw + beta)
-        rospy.loginfo("yaw:{}, Vx:{:4.3}".format(self.yaw, Vx))
-        Vy = V*math.sin(self.yaw + beta)
-        self.x = self.x + Vx * self.dt
-        self.y = self.y + Vy * self.dt
-
+    def calculate_odom(self, local_speed_x, local_speed_y, yaw_rate):
+        self.yaw += yaw_rate * self.dt
+        self.x += ((local_speed_x + self.last_local_speed_x)/2.0 * math.cos(self.yaw) - (local_speed_y + self.last_local_speed_y)/2.0 * math.sin(self.yaw)) * self.dt
+        self.y += ((local_speed_x + self.last_local_speed_x)/2.0 * math.sin(self.yaw) + (local_speed_y + self.last_local_speed_y)/2.0 * math.cos(self.yaw)) * self.dt
+        self.last_local_speed_x = local_speed_x
+        self.last_local_speed_y = local_speed_y
+        
         q = quaternion_from_euler(0.0, 0.0, self.yaw)
-
         odom_msg = Odometry()
         odom_msg.header.seq = 0
         odom_msg.header.stamp = rospy.Time.now()
-        odom_msg.header.frame_id = "map"
+        odom_msg.header.frame_id = "odom"
         odom_msg.child_frame_id = "base_link"
         odom_msg.pose.pose.position.x = self.x
         odom_msg.pose.pose.position.y = self.y
@@ -273,8 +232,8 @@ class UGVDriver:
         odom_msg.pose.pose.orientation.y = q[1]
         odom_msg.pose.pose.orientation.z = q[2]
         odom_msg.pose.pose.orientation.w = q[3]
-        odom_msg.twist.twist.linear.x = Vx
-        odom_msg.twist.twist.linear.y = Vy
+        odom_msg.twist.twist.linear.x = local_speed_x
+        odom_msg.twist.twist.linear.y = local_speed_y
         odom_msg.twist.twist.linear.z = 0.0
         odom_msg.twist.twist.angular.x = 0.0
         odom_msg.twist.twist.angular.y = 0.0
