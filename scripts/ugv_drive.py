@@ -119,6 +119,9 @@ class UGVDriver:
         self.yaw = 0
         self.x = 0
         self.y = 0
+        self.yaw_gain = 1.0
+        self.x_gain = 1.0
+        self.y_gain = 1.0
         self.current_steer_radian = [0, 0, 0, 0]  #radian
         self.current_wheel_speed = [0, 0, 0, 0]   #radian/sec
         self.last_local_speed_x = 0.0
@@ -209,13 +212,13 @@ class UGVDriver:
         local_speed_x = local_speed_x/4 
         local_speed_y = local_speed_y/4 
 
-        rospy.loginfo("speed_x:{:4.3} speed_y:{:4.3} yaw_rate:{:4.3}".format(local_speed_x, local_speed_y, yaw_rate))
+        # rospy.loginfo("speed_x:{:4.3} speed_y:{:4.3} yaw_rate:{:4.3}".format(local_speed_x, local_speed_y, yaw_rate))
         self.calculate_odom(local_speed_x, local_speed_y, yaw_rate)
 
     def calculate_odom(self, local_speed_x, local_speed_y, yaw_rate):
-        self.yaw += yaw_rate * self.dt
-        self.x += ((local_speed_x + self.last_local_speed_x)/2.0 * math.cos(self.yaw) - (local_speed_y + self.last_local_speed_y)/2.0 * math.sin(self.yaw)) * self.dt
-        self.y += ((local_speed_x + self.last_local_speed_x)/2.0 * math.sin(self.yaw) + (local_speed_y + self.last_local_speed_y)/2.0 * math.cos(self.yaw)) * self.dt
+        self.yaw += yaw_rate * self.dt * self.yaw_gain
+        self.x += ((local_speed_x + self.last_local_speed_x)/2.0 * math.cos(self.yaw) - (local_speed_y + self.last_local_speed_y)/2.0 * math.sin(self.yaw)) * self.dt * self.x_gain
+        self.y += ((local_speed_x + self.last_local_speed_x)/2.0 * math.sin(self.yaw) + (local_speed_y + self.last_local_speed_y)/2.0 * math.cos(self.yaw)) * self.dt * self.y_gain
         self.last_local_speed_x = local_speed_x
         self.last_local_speed_y = local_speed_y
         
