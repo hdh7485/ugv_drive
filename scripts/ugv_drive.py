@@ -171,10 +171,6 @@ class UGVDriver:
         # 107, 65
         wheel_position_x = [0.535, -0.535, -0.535, 0.535]
         wheel_position_y = [0.325, 0.325, -0.325, -0.325]
-        # initial values
-        local_speed_x = 0 		## Robot-Velocity in x-Direction (longitudinal) in m/s (in Robot-Coordinateframe)
-        local_speed_y = 0 		## Robot-Velocity in y-Direction (lateral) in m/s (in Robot-Coordinateframe)
-        yaw_rate = 0 
 
         # calculate rotational rate of robot and current "virtual" axis between all wheels
         for i in range(3):
