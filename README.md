@@ -1,5 +1,9 @@
 # ugv_drive
 
-## Dependencies
-### robot_upstart package
-http://docs.ros.org/jade/api/robot_upstart/html/index.html
+## SSH
+- IP Address: 192.168.0.101
+- User name: ugv
+- `$ ssh ugv@192.168.0.101`
+
+## ROS Launch
+- `$ roslaunch ugv_drive ugv_drive_mavros.launch`
